@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Baby Eric Cartman</title>
+  <title>Baby Cartmen</title>
   <link rel="icon" type="image/png" href="Main.png">
 
   <!-- Link preview / embed -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Baby Cartmen">
-  <meta property="og:title" content="Baby Eric Cartman">
+  <meta property="og:title" content="Baby Cartmen">
   <meta property="og:description" content="Behold.">
   <meta property="og:url" content="https://babycartmen.org">
   <meta property="og:image" content="https://babycartmen.org/Main.png">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1179">
   <meta property="og:image:height" content="1169">
-  <meta property="og:image:alt" content="Baby Eric Cartman">
+  <meta property="og:image:alt" content="Baby Cartmen">
   <meta name="theme-color" content="#d4143c">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="https://babycartmen.org/Main.png">
@@ -27,15 +27,67 @@
       height: 100%;
       background: #f7f7f7;
     }
-    img {
+    img.main {
       display: block;
       width: 100%;
       height: 100%;
       object-fit: contain;
     }
+    #legal-btn {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      z-index: 10;
+      font: 9px sans-serif;
+      line-height: 1;
+      color: #666;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid #bbb;
+      border-left: 0;
+      border-bottom: 0;
+      border-top-right-radius: 3px;
+      padding: 3px 6px;
+      text-decoration: none;
+    }
+    #legal-btn:hover { background: #fff; }
   </style>
 </head>
 <body>
-  <img src="Main.png" alt="Eric Cartman">
+  <img class="main" src="Main.png" alt="Cartmen">
+
+  <a id="legal-btn" href="https://babycartmen.org/Copyright.txt">Legal</a>
+
+  <audio id="player" preload="auto"></audio>
+
+  <script>
+    // Random music rotation
+    const songs = ['Song1.mp3', 'Song2.mp3', 'Song3.mp3', 'Song4.mp3'];
+    const player = document.getElementById('player');
+    let current = -1;
+    let started = false;
+
+    function playRandom() {
+      let next;
+      do {
+        next = Math.floor(Math.random() * songs.length);
+      } while (next === current && songs.length > 1);
+      current = next;
+      player.src = songs[current];
+      player.play().catch(() => {});
+    }
+
+    player.addEventListener('ended', playRandom);
+    player.addEventListener('error', playRandom);
+
+    // Browsers block audio until the visitor interacts, so start on first input
+    function startOnce() {
+      if (started) return;
+      started = true;
+      playRandom();
+    }
+    ['click', 'touchstart', 'keydown'].forEach((evt) =>
+      document.addEventListener(evt, startOnce, { once: true })
+    );
+  </script>
 </body>
 </html>
