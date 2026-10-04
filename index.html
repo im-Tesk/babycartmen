@@ -147,9 +147,22 @@
       if (++errorStreak < songs.length * 2) playNext();
     });
 
-    // Click = start / next song. Hold = toggle mute.
+    // Single click = start / resume / next song
+    function singleClick() {
+      if (!player.src) {
+        playNext();                          // first song still loading
+      } else if (player.paused) {
+        player.play().catch(() => {});       // resume
+      } else {
+        playNext();                          // skip to the next song
+      }
+    }
+
+    // Double click = pause. Hold = toggle mute.
     const HOLD_MS = 500;
+    const DOUBLE_MS = 250;
     let holdTimer = null;
+    let clickTimer = null;
     let held = false;
 
     mainImg.addEventListener('pointerdown', () => {
@@ -167,14 +180,20 @@
     );
 
     mainImg.addEventListener('click', () => {
-      if (held) { held = false; return; } // that was a hold, not a click
-      if (!player.src) {
-        playNext();                          // first song still loading
-      } else if (player.paused) {
-        player.play().catch(() => {});       // start playing
-      } else {
-        playNext();                          // skip to the next song
+      if (held) { held = false; return; }    // that was a hold, not a click
+
+      if (clickTimer) {                      // second click in time = double click
+        clearTimeout(clickTimer);
+        clickTimer = null;
+        player.pause();
+        showToast('Paused');
+        return;
       }
+
+      clickTimer = setTimeout(() => {        // wait to see if a second click follows
+        clickTimer = null;
+        singleClick();
+      }, DOUBLE_MS);
     });
 
     // Stop the long-press menu on phones from interrupting the hold
