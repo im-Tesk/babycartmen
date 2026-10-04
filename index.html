@@ -102,6 +102,26 @@
       toastTimer = setTimeout(() => toast.classList.remove('show'), 1200);
     }
 
+    // Speaking animation: swap Main.png / Speaking.png while audio is playing
+    const SPEAK_MS = 200;                    // how fast the image switches
+    new Image().src = 'Speaking.png';        // preload so the swap doesn't flicker
+    let showingSpeaking = false;
+
+    function setFrame(speaking) {
+      if (speaking === showingSpeaking) return;
+      showingSpeaking = speaking;
+      mainImg.src = speaking ? 'Speaking.png' : 'Main.png';
+    }
+
+    setInterval(() => {
+      const audible = !player.paused && !player.ended && !player.muted && player.readyState > 2;
+      if (audible) {
+        setFrame(!showingSpeaking);          // flip between the two images
+      } else {
+        setFrame(false);                     // no audio = Main.png
+      }
+    }, SPEAK_MS);
+
     // Shuffle through every song before repeating, never the same one twice in a row
     function nextIndex() {
       if (!queue.length) {
