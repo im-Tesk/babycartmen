@@ -32,6 +32,11 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: manipulation;
     }
     #legal-btn {
       position: fixed;
@@ -50,44 +55,135 @@
       text-decoration: none;
     }
     #legal-btn:hover { background: #fff; }
+    #toast {
+      position: fixed;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      font: 12px sans-serif;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.65);
+      border-radius: 12px;
+      padding: 4px 10px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    #toast.show { opacity: 1; }
   </style>
 </head>
 <body>
-  <img class="main" src="Main.png" alt="Cartmen">
+  <img class="main" id="main" src="Main.png" alt="Baby Cartmen" draggable="false">
 
   <a id="legal-btn" href="https://babycartmen.org/Copyright.txt">Legal</a>
-
-  <audio id="player" preload="auto"></audio>
+  <div id="toast"></div>
+  <audio id="player"></audio>
 
   <script>
-    // Random music rotation
     const songs = ['Song1.mp3', 'Song2.mp3', 'Song3.mp3', 'Song4.mp3'];
     const player = document.getElementById('player');
-    let current = -1;
-    let started = false;
+    const mainImg = document.getElementById('main');
+    const toast = document.getElementById('toast');
 
-    function playRandom() {
-      let next;
-      do {
-        next = Math.floor(Math.random() * songs.length);
-      } while (next === current && songs.length > 1);
-      current = next;
-      player.src = songs[current];
-      player.play().catch(() => {});
+    const cache = {};      // song index -> promise of a playable URL
+    let queue = [];        // shuffled play order
+    let last = -1;
+    let upcoming;
+    let errorStreak = 0;
+    let loading = false;
+
+    // Small on-screen message
+    let toastTimer;
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 1200);
     }
 
-    player.addEventListener('ended', playRandom);
-    player.addEventListener('error', playRandom);
-
-    // Browsers block audio until the visitor interacts, so start on first input
-    function startOnce() {
-      if (started) return;
-      started = true;
-      playRandom();
+    // Shuffle through every song before repeating, never the same one twice in a row
+    function nextIndex() {
+      if (!queue.length) {
+        queue = songs.map((_, i) => i).sort(() => Math.random() - 0.5);
+        if (queue.length > 1 && queue[0] === last) queue.push(queue.shift());
+      }
+      last = queue.shift();
+      return last;
     }
-    ['click', 'touchstart', 'keydown'].forEach((evt) =>
-      document.addEventListener(evt, startOnce, { once: true })
+
+    // Download the whole file first so a connection blip can't cut the song off
+    function fetchSong(i) {
+      if (!cache[i]) {
+        cache[i] = fetch(songs[i])
+          .then((r) => {
+            if (!r.ok) throw new Error('bad response');
+            return r.blob();
+          })
+          .then((b) => URL.createObjectURL(b))
+          .catch(() => songs[i]); // fall back to normal streaming
+      }
+      return cache[i];
+    }
+
+    async function playNext() {
+      if (loading) return;
+      loading = true;
+      const i = upcoming;
+      const url = await fetchSong(i);
+      player.src = url;
+      upcoming = nextIndex();
+      fetchSong(upcoming); // preload the one after this
+      loading = false;
+      try {
+        await player.play();
+      } catch (e) {
+        // autoplay blocked: the first click on the image will start it
+      }
+    }
+
+    player.addEventListener('ended', () => { errorStreak = 0; playNext(); });
+    player.addEventListener('error', () => {
+      if (++errorStreak < songs.length * 2) playNext();
+    });
+
+    // Click = start / next song. Hold = toggle mute.
+    const HOLD_MS = 500;
+    let holdTimer = null;
+    let held = false;
+
+    mainImg.addEventListener('pointerdown', () => {
+      held = false;
+      clearTimeout(holdTimer);
+      holdTimer = setTimeout(() => {
+        held = true;
+        player.muted = !player.muted;
+        showToast(player.muted ? 'Muted' : 'Unmuted');
+      }, HOLD_MS);
+    });
+
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach((evt) =>
+      mainImg.addEventListener(evt, () => clearTimeout(holdTimer))
     );
+
+    mainImg.addEventListener('click', () => {
+      if (held) { held = false; return; } // that was a hold, not a click
+      if (!player.src) {
+        playNext();                          // first song still loading
+      } else if (player.paused) {
+        player.play().catch(() => {});       // start playing
+      } else {
+        playNext();                          // skip to the next song
+      }
+    });
+
+    // Stop the long-press menu on phones from interrupting the hold
+    mainImg.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // Start loading right away and try to autoplay
+    upcoming = nextIndex();
+    fetchSong(upcoming);
+    playNext();
   </script>
 </body>
 </html>
