@@ -10,7 +10,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Baby Cartmen">
   <meta property="og:title" content="Baby Cartmen">
-  <meta property="og:description" content="Behold.">
+  <meta property="og:description" content="cartmen is life, life is cartmen">
   <meta property="og:url" content="https://babycartmen.org">
   <meta property="og:image" content="https://babycartmen.org/Main.png">
   <meta property="og:image:type" content="image/png">
@@ -152,6 +152,7 @@
       const i = upcoming;
       const url = await fetchSong(i);
       player.src = url;
+      updateMediaSession(i);
       upcoming = nextIndex();
       fetchSong(upcoming); // preload the one after this
       loading = false;
@@ -160,6 +161,25 @@
       } catch (e) {
         // autoplay blocked: the first click on the image will start it
       }
+    }
+
+    // Lock screen / Control Center player
+    function updateMediaSession(i) {
+      if (!('mediaSession' in navigator)) return;
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: songs[i].replace('.mp3', ''),
+        artist: 'Baby Cartmen',
+        album: 'babycartmen.org',
+        artwork: [
+          { src: 'Main.png', sizes: '1179x1169', type: 'image/png' }
+        ]
+      });
+    }
+
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.setActionHandler('play', () => player.play());
+      navigator.mediaSession.setActionHandler('pause', () => player.pause());
+      navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
     }
 
     player.addEventListener('ended', () => { errorStreak = 0; playNext(); });
@@ -206,7 +226,6 @@
         clearTimeout(clickTimer);
         clickTimer = null;
         player.pause();
-        // showToast('Paused');
         return;
       }
 
